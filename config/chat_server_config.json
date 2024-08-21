@@ -1,0 +1,7 @@
+{
+    "api_server_port": 5015,
+    "prometheus_port": 5017,
+    "model": "liuhaotian/llava-v1.5-7b",
+    "log_level": "INFO",
+    "print_stats": true
+}
