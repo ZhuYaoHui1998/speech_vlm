@@ -1,5 +1,5 @@
 #!/bin/bash
-curl --location 'http://192.168.49.101:5010/api/v1/chat/completions' \
+curl --location 'http://192.168.49.227:5010/api/v1/chat/completions' \
 --header 'Content-Type: application/json' \
 --data '{
     "messages": [
@@ -15,13 +15,13 @@ curl --location 'http://192.168.49.101:5010/api/v1/chat/completions' \
                     "type": "stream",
                     "stream":
                     {
-                        "stream_id": "d027088e-9ba9-40b9-8481-c306e35df8b6"
+                        "stream_id": "7d50edd6-a8f1-41b6-9eed-8ed874efd5a4"
                     }
                 },
 
                 {
                     "type":"text",
-                    "text": "describe the scene"
+                    "text": "Can you scan it"
                 }
             ]
         }

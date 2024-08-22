@@ -8,7 +8,6 @@ import time
 # Configuration parameters
 FORMAT = pyaudio.paInt16  # 16-bit resolution
 CHANNELS = 1  # Mono channel
-RATE = 16000  # 16kHz sample rate
 CHUNK = 1024  # Number of samples per chunk
 OUTPUT_FILENAME = "output.wav"  # Output file name
 
@@ -16,6 +15,28 @@ OUTPUT_FILENAME = "output.wav"  # Output file name
 audio = pyaudio.PyAudio()
 # Prepare the list to store recording data
 frames = []
+
+# Initialize Micphone Rate
+print("Available audio input devices:")
+for i in range(audio.get_device_count()):
+    info = audio.get_device_info_by_index(i)
+    print(f"Device {i}: {info['name']} - {info['maxInputChannels']} channels")
+
+device_index = int(input("Please select the device index for your USB microphone: "))
+
+device_info = audio.get_device_info_by_index(device_index)
+supported_sample_rates = [8000, 16000, 32000, 44100, 48000]
+supported_rate=0
+for rate in supported_sample_rates:
+    try:
+        if audio.is_format_supported(rate,
+                                     input_device=device_index,
+                                     input_channels=1,
+                                     input_format=pyaudio.paInt16):
+            supported_rate=rate
+            print(f"{rate} Hz is supported.")
+    except ValueError:
+        print(f"{rate} Hz is not supported.")
 
 # Initialize the model
 model = "./SenseVoiceSmall"
@@ -33,8 +54,8 @@ def start_recording():
     
     try:
         stream = audio.open(format=FORMAT, channels=CHANNELS,
-                            rate=RATE, input=True,
-                            frames_per_buffer=CHUNK)
+                            rate=supported_rate, input=True,
+                            frames_per_buffer=CHUNK, input_device_index=device_index)
         print("Recording started... Press 'E' to stop recording.")
     
         while True:
@@ -55,7 +76,7 @@ def save_recording():
         waveFile = wave.open(OUTPUT_FILENAME, 'wb')
         waveFile.setnchannels(CHANNELS)
         waveFile.setsampwidth(audio.get_sample_size(FORMAT))
-        waveFile.setframerate(RATE)
+        waveFile.setframerate(supported_rate)
         waveFile.writeframes(b''.join(frames))
         waveFile.close()
         print(f"Recording saved as {OUTPUT_FILENAME}")

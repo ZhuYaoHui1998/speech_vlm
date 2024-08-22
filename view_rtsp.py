@@ -1,6 +1,6 @@
 import cv2
 
-rtsp_url = "rtsp://192.168.49.101:5011/out"
+rtsp_url = "rtsp://192.168.49.227:5011/out"
 
 cap = cv2.VideoCapture(rtsp_url)
 

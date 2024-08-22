@@ -7,20 +7,52 @@ from funasr import AutoModel
 from funasr.utils.postprocess_utils import rich_transcription_postprocess
 import time
 import json
+import torch
+from TTS.api import TTS
+import wave
+import subprocess
+import os
+# Get device
+device = "cuda" if torch.cuda.is_available() else "cpu"
+
+# Init TTS
+api = TTS("tts_models/en/ljspeech/glow-tts").to(device)
 
 # Configuration parameters 
 FORMAT = pyaudio.paInt16  # 16-bit resolution
 CHANNELS = 1  # Mono channel
-RATE = 16000  # 16kHz sample rate
 CHUNK = 1024  # Number of samples per chunk
 OUTPUT_FILENAME = "output.wav"  # Output file name
-API_URL = 'http://192.168.49.101:5010/api/v1/chat/completions'  # API endpoint
-REQUEST_ID = "172fdcd7-246b-4c5a-82df-5e0b7da63489"  # Request ID
+API_URL = 'http://192.168.49.227:5010/api/v1/chat/completions'  # API endpoint
+REQUEST_ID = "1388b691-3b9f-4bda-9d70-0ff0696f80f4"  # Request ID
 
 # Initialize PyAudio
 audio = pyaudio.PyAudio()
 # Prepare the list to store recording data
 frames = []
+
+# Initialize Micphone Rate
+print("Available audio input devices:")
+for i in range(audio.get_device_count()):
+    info = audio.get_device_info_by_index(i)
+    print(f"Device {i}: {info['name']} - {info['maxInputChannels']} channels")
+
+device_index = int(input("Please select the device index for your USB microphone: "))
+
+device_info = audio.get_device_info_by_index(device_index)
+supported_sample_rates = [8000, 16000, 32000, 44100, 48000]
+supported_rate=0
+for rate in supported_sample_rates:
+    try:
+        if audio.is_format_supported(rate,
+                                     input_device=device_index,
+                                     input_channels=1,
+                                     input_format=pyaudio.paInt16):
+            supported_rate=rate
+            print(f"{rate} Hz is supported.")
+    except ValueError:
+        print(f"{rate} Hz is not supported.")
+
 
 # Initialize the model
 model = "./SenseVoiceSmall"
@@ -31,6 +63,8 @@ model = AutoModel(
     trust_remote_code=True,
     disable_log=True
 )
+
+
 
 def extract_content(json_response):
     try:
@@ -55,8 +89,8 @@ def start_recording():
     
     try:
         stream = audio.open(format=FORMAT, channels=CHANNELS,
-                            rate=RATE, input=True,
-                            frames_per_buffer=CHUNK)
+                            rate=supported_rate, input=True,
+                            frames_per_buffer=CHUNK, input_device_index=device_index)
         print("Recording started... Press 'E' to stop recording.")
     
         while True:
@@ -77,7 +111,7 @@ def save_recording():
         waveFile = wave.open(OUTPUT_FILENAME, 'wb')
         waveFile.setnchannels(CHANNELS)
         waveFile.setsampwidth(audio.get_sample_size(FORMAT))
-        waveFile.setframerate(RATE)
+        waveFile.setframerate(supported_rate)
         waveFile.writeframes(b''.join(frames))
         waveFile.close()
         print(f"Recording saved as {OUTPUT_FILENAME}")
@@ -124,11 +158,44 @@ def send_alert(text):
     
     try:
         result = subprocess.run(curl_command, check=True, capture_output=True, text=True)
+        ##Get words
         content_result=extract_content(result.stdout)
+        # TTS 
+        api.tts_to_file(
+            str(content_result),
+            speaker_wav="./example_1.wav",
+            file_path="speech.wav"
+        )
+        # Convert audio rate
+        subprocess.run(['ffmpeg', '-i', 'speech.wav', '-ar',str(supported_rate), 'speech1.wav','-y'])
+        # Play audio
+        wf = wave.open('./speech1.wav', 'rb')
+        stream = audio.open(format=pyaudio.paInt16,
+                        channels=1,
+                        rate=supported_rate,
+                        output=True,
+                        output_device_index=device_index)
+        data = wf.readframes(1024)
+        while data:
+            stream.write(data)
+            data = wf.readframes(1024)
+        # Play audio
+        os.remove('speech.wav')
+        os.remove('speech1.wav')
+        stream.stop_stream()
+        stream.close()
+        wf.close()  # Close the wave file as well
+
         #print(f"Alert sent successfully: {result.stdout}")
     except subprocess.CalledProcessError as e:
         print(f"An error occurred while sending the alert: {e.stderr}")
-
+    finally:
+        # Even if an error occurs, try to close the stream
+        if stream.is_active():
+            stream.stop_stream()
+            os.remove('speech.wav')
+            os.remove('speech1.wav')
+            stream.close()
 print("Welcome to the Recording and Speech-to-Text System!")
 print("Press 'S' to start recording, 'E' to stop recording.")
 
