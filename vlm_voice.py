@@ -24,7 +24,7 @@ CHANNELS = 1  # Mono channel
 CHUNK = 1024  # Number of samples per chunk
 OUTPUT_FILENAME = "output.wav"  # Output file name
 API_URL = 'http://192.168.49.227:5010/api/v1/chat/completions'  # API endpoint
-REQUEST_ID = "1388b691-3b9f-4bda-9d70-0ff0696f80f4"  # Request ID
+REQUEST_ID = "5f2a4e44-58d2-42d0-95d8-70cb15241c51"  # Request ID
 
 # Initialize PyAudio
 audio = pyaudio.PyAudio()
@@ -91,10 +91,10 @@ def start_recording():
         stream = audio.open(format=FORMAT, channels=CHANNELS,
                             rate=supported_rate, input=True,
                             frames_per_buffer=CHUNK, input_device_index=device_index)
-        print("Recording started... Press 'E' to stop recording.")
+        print("Recording started... Press '2' to stop recording.")
     
         while True:
-            if keyboard.is_pressed('e'):
+            if keyboard.is_pressed('2'):
                 print("Recording stopped.")
                 break
             data = stream.read(CHUNK)
@@ -197,10 +197,10 @@ def send_alert(text):
             os.remove('speech1.wav')
             stream.close()
 print("Welcome to the Recording and Speech-to-Text System!")
-print("Press 'S' to start recording, 'E' to stop recording.")
+print("Press '1' to start recording, '2' to stop recording.")
 
 while True:
-    if keyboard.is_pressed('s'):
+    if keyboard.is_pressed('1'):
         print("Preparing to start recording...")
         start_recording()
         save_recording()
